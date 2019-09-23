@@ -3,18 +3,18 @@ CLASS: WikiquoteApi - utility functions to query wikiquotes and display results 
 
  ==ClosureCompiler==
  @compilation_level SIMPLE_OPTIMIZATIONS
- @output_file_name wikiquote-api.js
+ @output_file_name wikiquote-api-gui.js
  ==/ClosureCompiler==
- methods:
+
 selfConstruct  - setup div framework, input textbox  (inside containerDiv) and optionally load an initial query
 openAuxSearch  - Search using opensearch api.  Returns an array of search results.
 openSearch     - Search using search api.  Returns an array of search results.
 findRedirect   - get redirect by parsing links for given pageid/titles
 findCatId      - given a category search term, find the Id and forward to getQuality
 listCategories - list Category, with a GENERATOR, for specified word.
-mkPageLink     - make a page/category link
+mkPageLinks     - make a page/category link
 moreLike       - Search using moreLike api. 
-queryTitles    - Query based on "titles" parameter and return page id.
+queryTitles    - Query based on "titles" parameter and return page id.  
 getSectionsForPage - Get the sections for a given page.
 quoteReady     - strip html and display the quote
 getQuotesForSection - Get all quotes for a given section. 
@@ -31,6 +31,7 @@ WikiquoteApiClass = function(vpr,$) {
   var wqa = this;
   var pageId=1;
   var API_URL = "https://en.wikiquote.org/w/api.php";
+  var search_template = "https://en.wikiquote.org/w/index.php?search=CONTENT&title=Special%3ASearch&go=Go";
   var API_NAME = "WikiquoteApi";   
   var historyA = [];
   var historytA = [];
@@ -38,100 +39,102 @@ WikiquoteApiClass = function(vpr,$) {
   var dontclearcats=0;
   var qualityDown=false;
   var prevsearch="Search for quotes";
-	// GLOBAL HELPER OBJ 
-	if(vpr==null)vpr={};
-	var vpradd={name:'minivpr',
-			noop:function(){ // do nothing function
-								},
-		// DEBUG
-		vprint:function(tag,stuff){
-			console.log(tag+stuff);// comment out for production!
-			} ,
-		// DEBUG
-		dumpvar:function(inval){return JSON.stringify(inval)},
-		// UTIL
-		iterate:function(obj){$.map(obj, function(element,index) {return index});},
-			size: function(obj){
-				return (typeof obj=='array')?(obj.length):-1;},
-			dd: function (num){
-				return (Math.round(parseFloat(num)*100)/100);
-				},
-		// UTIL
-		isnull:		function(v){
-			if(typeof v=='undefined')
-				return true;
-			v=String(v);
-			if(v==="0")
-				return false;
-			else
-				return (v=="" || v=="undefined" || v=="_All_" || v=="null" || v===null)?true:false;
-			},
-		//UTIL
-		checkEnter : function(e){ //e is event object passed from function invocation
-			var characterCode,ret_val;
-			if(e && e.which){ //if which property of event object is supported (NN4)
-				 e = e;
-				 characterCode = e.which; //character code is contained in NN4's which property
-				 }
-			else{							
-				 e = e;					
-				 characterCode = e.keyCode; //character code is contained in IE's keyCode property
-				 }
-			ret_val = (characterCode == 13)?true:false;
-			if(ret_val){ // stop any default actions
-				e.cancelBubble = true;
-				e.returnValue = false;
-				document.activeElement.blur();//20161004 close ipad virtual keyboard
-				if (e.stopPropagation) {
-					e.stopPropagation();
-					e.preventDefault();
-					}
-				}
-			return (ret_val); 
-			},
-		// CALBACK
-		wkUseQuote: function(){
-			var picid=$(this).text(); 
-			if($('#WikiquoteApinewlines').prop('checked')==true)
-				picid=picid.replace(/\n/g,"<br>");
-			// auto add attribute
-			if($('#WikiquoteApiattribute').prop('checked')==true)
-				picid +='<br>'+ $('#WikiquoteApiattribute').val();
-			vpr.vprint("wiki","= = = = = = = wkUseQuote  key:"+self.imgkey+" text:"+picid);
-			wqa.clickHandler(picid);
-			}
-		};
-	for(key in vpradd)
-		if(vpr[key]==null)
-			vpr[key] = vpradd[key];
-	vpr.vprint("wiki","Have vpr?"+vpr.name);
-   /**
-   selfConstruct - setup div framework, input textbox  (inside containerDiv) and optionally load an initial query
-   example options:
+  // GLOBAL HELPER OBJ 
+  if(vpr==null)vpr={};
+  var vpradd={name:'minivpr',
+      noop:function(){ // do nothing function
+                },
+    // DEBUG
+    vprint:function(tag,stuff){
+      console.log(tag+stuff);// comment out for production!
+      } ,
+    // DEBUG
+    dumpvar:function(inval){return JSON.stringify(inval)},
+    // UTIL
+    iterate:function(obj){$.map(obj, function(element,index) {return index});},
+      size: function(obj){
+        return (typeof obj=='array')?(obj.length):-1;},
+      dd: function (num){
+        return (Math.round(parseFloat(num)*100)/100);
+        },
+    // UTIL
+    isnull:    function(v){
+      if(typeof v=='undefined')
+        return true;
+      v=String(v);
+      if(v==="0")
+        return false;
+      else
+        return (v=="" || v=="undefined" || v=="_All_" || v=="null" || v===null)?true:false;
+      },
+    //UTIL
+    checkEnter : function(e){ //e is event object passed from function invocation
+      var characterCode,ret_val;
+      if(e && e.which){ //if which property of event object is supported (NN4)
+         e = e;
+         characterCode = e.which; //character code is contained in NN4's which property
+         }
+      else{              
+         e = e;          
+         characterCode = e.keyCode; //character code is contained in IE's keyCode property
+         }
+      ret_val = (characterCode == 13)?true:false;
+      if(ret_val){ // stop any default actions
+        e.cancelBubble = true;
+        e.returnValue = false;
+        document.activeElement.blur();//20161004 close ipad virtual keyboard
+        if (e.stopPropagation) {
+          e.stopPropagation();
+          e.preventDefault();
+          }
+        }
+      return (ret_val); 
+      },
+    // CALBACK
+    wkUseQuote: function(){
+      var picid=$(this).text(); 
+      if($('#WikiquoteApinewlines').prop('checked')==true)
+        picid=picid.replace(/\n/g,"<br>");
+      // auto add attribute
+      if($('#WikiquoteApiattribute').prop('checked')==true)
+        picid +='<br>'+ $('#WikiquoteApiattribute').val();
+      vpr.vprint("wiki","= = = = = = = wkUseQuote  key:"+self.imgkey+" text:"+picid);
+      wqa.clickHandler(picid);
+      }
+    };
+  for(key in vpradd)
+    if(vpr[key]==null)
+      vpr[key] = vpradd[key];
+  vpr.vprint("wiki","Have vpr?"+vpr.name);
+    
+  /**
+  selfConstruct - setup div framework, input textbox  (inside containerDiv) and optionally load an initial query
+  example options:
   {initsearch:'Einstein',
-										waiticon:'<span id="spinner" class="gnlv-blink">working!<span>',
-										thumbWidth:150,
-										containerDiv:'#quote-container',
-										clickHandler: myhandler
-										}
-   */
+                    waiticon:'<span id="spinner" class="gnlv-blink">working!<span>',
+                    thumbWidth:150,
+                    containerDiv:'#quote-container',
+                    clickHandler: myhandler
+                    }
+  */
   wqa.selfConstruct = function(optionsO) {
     if(optionsO.containerDiv==null)
       vpr.vprint("wiki","selfConstruct start, have NO containerDiv!");
-		else if(typeof(optionsO.containerDiv=="String")){
-			wqa.containerDiv=$(optionsO.containerDiv);
+    else if(typeof(optionsO.containerDiv=="String")){
+      wqa.containerDiv=$(optionsO.containerDiv);
       vpr.vprint("wiki","selfConstruct found containerDiv?"+wqa.containerDiv.length);
-			}
+      }
     else
       wqa.containerDiv=optionsO.containerDiv;
     vpr.vprint("wiki","selfConstruct start, have containerDiv:"+wqa.containerDiv.prop('id'));
     // PARAMS
     wqa.waiticon   = optionsO.waiticon;
-		wqa.clickHandler = optionsO.clickHandler;
+    wqa.clickHandler = optionsO.clickHandler;
     wqa.thumbWidth = (optionsO.thumbWidth==null)?200:optionsO.thumbWidth;
     initsearch     = vpr.isnull(optionsO.initsearch)?'Oscar Wilde':optionsO.initsearch;
+    thelink = '<a id="'+API_NAME+'link" class="gnlv-a" target="_blank" href="'+search_template.replace(/CONTENT/,initsearch)+'">'+API_NAME.replace(/api/i,"")+'</a>';
     // DIVS/SEARCH BOX/BACK
-    wqa.containerDiv.append('Search '+API_NAME.replace(/api/i,"")+': <input id="'+API_NAME+'input" type="text" width="40" value="'+initsearch+'" style="margin:5px;" /><a id="'+API_NAME+'goback" class="gnlv-gone  " href="javascript:vpr.noop()" onClick="'+API_NAME+'.goBackl()"><< BACK</a>');
+    wqa.containerDiv.append('Search '+thelink+': <input id="'+API_NAME+'input" type="text" width="40" value="'+initsearch+'" style="margin:5px;" /><a id="'+API_NAME+'goback" class="gnlv-gone  " href="javascript:'+API_NAME+'.noop()" onClick="'+API_NAME+'.goBackl()"><< BACK</a>');
     $('#'+API_NAME+'input').on('keyup', function(event){
                   var theid = this.id;
                   var thisguy = this.value;
@@ -139,23 +142,26 @@ WikiquoteApiClass = function(vpr,$) {
                   vpr.vprint("wiki","event:keyup on:"+theid+" "+thisguy+" -> "+newtext);
                   if(vpr.checkEnter(event) ){
                     wqa.queryTitles(newtext,{clear:true,setPrevSearch:true});
-                  }
+                    }
                 });
     wqa.linksDiv   = $('<div id="wikilinksdiv" class="leftit" ></div>');
     wqa.containerDiv.append(wqa.linksDiv);
     wqa.thumbsDiv  = $('<div id="wikithumbsdiv" class="leftit" ></div>');
     wqa.containerDiv.append(wqa.thumbsDiv);
     wqa.inputEl = $('#'+API_NAME+'input');
+    wqa.noop = vpr.noop;
     //INIT SEARCH  
     if(initsearch!=''){
       prevsearch=initsearch;
       //wqa.listCategories(pageId,wqa.capitalizeString(initsearch));
       wqa.queryTitles(wqa.capitalizeString(initsearch));
-    }
-  } // end selfConstruct
+      }
+    } // end selfConstruct
   
-/**
+  /**
   openAuxSearch - Search using opensearch api.  Returns an array of search results.
+   
+   
   example call:
    https://commons.wikimedia.org/w/api.php?action=opensearch&format=json&search=Category:Pawprints&suggest=1&redirect=1&prop=categoryinfo
   response:
@@ -175,7 +181,7 @@ WikiquoteApiClass = function(vpr,$) {
 
 ref 
 https://www.mediawiki.org/wiki/API:Opensearch
-   */
+  */
   wqa.openAuxSearch = function(pageId, titles,  optionsO) {
     linksDiv=(optionsO && optionsO.linksDiv)?optionsO.linksDiv:wqa.linksDiv;
     $.ajax({
@@ -204,7 +210,6 @@ https://www.mediawiki.org/wiki/API:Opensearch
               catA.push(infoA);
             else
               pagA.push(infoA);              
-
             } //end for
         vpr.vprint("wiki","openSSearch CALBACK DONE num cats:"+catA.length+" pages:"+pagA.length);
         if(catA.length>=1)
@@ -230,7 +235,7 @@ response:
 
 ref 
 https://www.mediawiki.org/wiki/API:Search
-   */
+  */
   wqa.openSearch = function(pageId, titles,  optionsO) {
     linksDiv=(optionsO && optionsO.linksDiv)?optionsO.linksDiv:wqa.linksDiv;
     vpr.vprint("wiki","openSearch  = = START = = pageId:"+pageId+" titles:"+titles);
@@ -311,7 +316,7 @@ https://www.mediawiki.org/wiki/API:Search
         action: "parse",
         prop: "links",
         page: titles
-      };
+        };
     if(pageId!=null){// swap titles for pageids
       vpr.vprint("wiki","findRedirect = =  PAGEID MODE:"+pageId);
       mydata['pageid']=pageId;
@@ -383,7 +388,7 @@ https://www.mediawiki.org/wiki/API:Search
         format: "json",
         action: "query",
         prop: "links|categoryinfo",
-    redirects:"resolve",
+        redirects:"resolve",
         titles: titles
       };
     if(pageId!=null){// swap titles for pageids
@@ -399,7 +404,7 @@ https://www.mediawiki.org/wiki/API:Search
       data: mydata,
 
       success: function(result, status){
-    var catA=[];
+      var catA=[];
         vpr.vprint("wiki","findCatId CALLBACK START pageId:"+pageId+" title:"+titles);
         var catA=[];
         if(result.query==null || result.query.pages==null){
@@ -411,35 +416,38 @@ https://www.mediawiki.org/wiki/API:Search
             for(key in pageA){
               var infoA = pageA[key];
               vpr.vprint("wiki","findCatId CALBACK page["+key+"] GOT:"+vpr.dumpvar(infoA));
-        if(infoA.categoryinfo==null)
-          vpr.vprint("wiki","findCatId no categoryinfo!");
-        else if(infoA.categoryinfo.subcats >0 ||  infoA.categoryinfo.size >10){// ARE WE GOOD?
+              if(infoA.categoryinfo==null)
+                vpr.vprint("wiki","findCatId no categoryinfo!");
+              else if(infoA.categoryinfo.subcats >0 ||  infoA.categoryinfo.size >10){// ARE WE GOOD?
                 vpr.vprint("wiki","findCatId LOOKS GOOD TO GO calling getQuality("+key+")");
-        wqa.getQuality(key,null);
-        wqa.listCategories(key,null,{isCat:true});
-          }
-        else if(infoA.links!=null){
-        var linkA =infoA.links;
-        //wqa.listCategories(-1,linkA);
-        for(ii=0; ii<linkA.length;ii++)
+                wqa.getQuality(key,null);
+                wqa.listCategories(key,null,{isCat:true});
+                }
+              else if(infoA.links!=null){
+                var linkA =infoA.links;
+                //wqa.listCategories(-1,linkA);
+                for(ii=0; ii<linkA.length;ii++)
                   if(linkA[ii].ns==14 && linkA[ii].title.match(/^Category:/i)){// take first likely candidate
                   vpr.vprint("wiki","findCatId looks promising:"+linkA[ii].title);
-          catA.push(linkA[ii]);
-          }
-          }
+                  catA.push(linkA[ii]);
+                  }
+                }
               else {
                 vpr.vprint("wiki","findCatId NO CATEGORYINFO OR LINKS for:"+titles);
-        if(!titles.match(/s$/)) // try an s
-          wqa.findCatId(null,titles+"s");
-          }
-        if(catA.length>0){
+                if(!titles.match(/s$/)) {// try an s
+                  vpr.vprint("wiki","findCatId try again with:"+titles+"s");
+                  wqa.findCatId(null,titles+"s");
+                  }
+                }//end nothing
+              if(catA.length>0){
                 // too annoying if it dont clear  dontclearcats=1;
-          wqa.mkPageLinks(catA,{isCat:true});
-          wqa.findCatId(null,catA[0].title);
-        }
-              } //end initial pageA
+                vpr.vprint("wiki","findCatId try again with:"+catA[0].title);
+                wqa.mkPageLinks(catA,{isCat:true});
+                wqa.findCatId(null,catA[0].title);
+                } // 
+              } //end initial page results good
             vpr.vprint("wiki","findCatId["+titles+"] DONE num cats:"+catA.length+":");
-          }
+          } // end had results
         }, // end success
       error: function(xhr, result, status){
         vpr.vprint("wiki","findCatId:Error "+status+","+result+","+vpr.dumpvar(xhr));
@@ -460,7 +468,7 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
   wqa.listCategories = function(pageId, titles, optionsO) {
     linksDiv=(optionsO && optionsO.linksDiv)?optionsO.linksDiv:wqa.linksDiv;
     vpr.vprint("wiki","listCategories   = =  START  = =  pageId:"+pageId+" title:"+titles);
-  var mydata = {
+    var mydata = {
         format: "json",
         action: "query",
         generator: "categorymembers",
@@ -469,15 +477,15 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
         gcmlimit:"500",
         gcmtitle: titles
       };
-  if(pageId!=null){// swap titles for pageids
+    if(pageId!=null){// swap titles for pageids
       vpr.vprint("wiki","listCategories = =  PAGEID MODE with id:"+pageId);
       mydata['gcmpageid']=pageId;
       delete mydata['gcmtitle'];
       }
-  if(optionsO && optionsO.isCat)// skip pages (already have them)
-    mydata.gcmtype="subcat|page";
-  if(optionsO && optionsO.clear) // do clear
-      wqa.clearDivs('wait',titles,optionsO);
+    if(optionsO && optionsO.isCat)// skip pages (already have them)
+      mydata.gcmtype="subcat|page";
+    if(optionsO && optionsO.clear) // do clear
+        wqa.clearDivs('wait',titles,optionsO);
     
     $.ajax({
       url: API_URL,
@@ -486,7 +494,7 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
       data: mydata,
 
       success: function(result, status){
-        vpr.vprint("wiki","listCategories CALLBACK  = =  START  = =  options?"+vpr.dumpvar(optionsO));
+        vpr.vprint("wiki","listCategories CALLBACK  = =  START  = = pageId["+pageId+"]titles["+titles+"] options?"+vpr.dumpvar(optionsO));
         if(result.query==null){
           vpr.vprint("wiki","listCategories CALLBACK NOTHING FOUND, try category["+titles+"]:"+vpr.dumpvar(result));
           //wqa.mkCatLinks([titles]);
@@ -504,26 +512,56 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
           var filmin=0,filmax=3;
           var pagmin=0,pagmax=3;
           var sizmin=0,sizmax=3;
-      var totpages = vpr.size(pageA);
+          var totpages = vpr.size(pageA);
           vpr.vprint("wiki","listCategories CALLBACK GOT num pages:"+totpages);
-            for(key in pageA){
-              var infoA = pageA[key];
-        if(totpages<50)
-              vpr.vprint("wiki","listCategories CALBACK page["+key+"] GOT:"+infoA.title);
-              if(infoA.title.match(/^Category:/i))
-                catA.push(infoA);
-              else // a page
-                pagA.push(infoA);
-              } //end initial pageA
-            vpr.vprint("wiki","listCategories[pageid:"+pageId+" title:"+titles+"] DONE num cats:"+catA.length+" pages:"+pagA.length+" jpgA:"+jpgA.length);
-            if(catA.length>=1)
-              wqa.mkPageLinks(catA,{isCat:true, divider:' | ',label:'Sub Categories:'});
-            if(pagA.length>=1) //20170409 evidence to change this to getThumbsOneshot IN pagelinks(testing with mule then click mule)
+          //
+          // LOOP
+          for(key in pageA){
+            var infoA = pageA[key];
+            if(infoA.categoryinfo){
+              catmin = Math.min(catmin,infoA.categoryinfo.subcats);
+              catmax = Math.max(catmax,infoA.categoryinfo.subcats);
+              sizmin = Math.min(sizmin,infoA.categoryinfo.size); // a combo of cats/files/pages
+              sizmax = Math.max(sizmax,infoA.categoryinfo.size);
+              }
+            if(totpages<50)
+              vpr.vprint("wiki","listCategories CALBACK page["+key+"] GOT:"+vpr.dumpvar(infoA));
+            if(infoA.title.match(/^Category:/i))
+              catA.push(infoA);
+            else if(infoA.title.match(/^File.*(jpg|jpeg|png|gif)$/i))
+              jpgA.push(infoA);
+            else if(infoA.title.match(/^File/i))
+              vpr.vprint("wiki","listCategories CALBACK IGNORE a non-image:"+infoA.title);
+            else // a page
+              pagA.push(infoA);
+            } //end loop
+          vpr.vprint("wiki","listCategories[pageid:"+pageId+" title:"+titles+"] DONE num cats:"+catA.length+"min/max("+catmin+","+catmax+") pages:"+pagA.length+" jpgA:"+jpgA.length);
+          subcatscalerange=25/(catmax-catmin);  // fontsizekey:'subcats',fontscalerange:subcatscalerange
+          generalscalerange=25/(sizmax-sizmin); // fontsizekey:'size',fontscalerange:generalscalerange
+          if(catA.length==0 && pagA.length==0){// had a link click show notice of no subcats
+            if(linksDiv.need2clear){
+              linksDiv.need2clear=false;
+              linksDiv.html('<h2>No more sub categories!</h2>');
+              vpr.vprint("wiki","mkCategories LinksDiv found zip X X CLEAR WAIT");
+              }
+            }
+          if(catA.length>=1)
+            wqa.mkPageLinks(catA,{isCat:true, divider:' | ',label:'Sub Categories:',fontsizekey:'subcats',fontscalerange:subcatscalerange});
+          if(pagA.length>=1) //20170409 evidence to change this to getThumbsOneshot IN pagelinks(testing with mule then click mule)
               wqa.mkPageLinks(pagA,{divider:' | ',label:'Sub Pages:'});  
             if(jpgA.length>=1)
               wqa.getThumbsForPage(null,jpgA);
-      if((jpgA.length>=200 || jpgA.length<10) && pageId!=null) // too many or too few,  list good ones
-        wqa.getQuality(pageId,null);
+          if(jpgA.length>=200 || jpgA.length<10){ // too many or too few,  list good ones
+            if(jpgA.length<=0) // zip, need to clear spinner
+              wqa.thumbsDiv.html('');
+            vpr.vprint("wiki","listCategories to few or too many images, try getQuality");
+            if(pageId!=null )
+              wqa.getQuality(pageId,null);
+            else if(jpgA.length>=200)
+              wqa.findCatId(null,titles);//< often re-list the cats!
+            else // just clear the wait
+              wqa.thumbsDiv.html('<h2>Nothing Found, this category only lists other categories!</h2>');
+            }
             if(titles!=null && (catA.length>=1||pagA.length>=1||jpgA.length>=1))  // found stuff try morelike
               wqa.moreLike(pageId, titles.replace(/^Category\:/,""));
           }
@@ -538,9 +576,9 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
   /**
    mkPageLink - make a page/category link, this function makes DIV WRITES
       options {
-     divider : [break|pipe]
-     label:  "some text to start with"
-   }
+         divider : [break|pipe]
+         label:  "some text to start with"
+       }
    expect like this: "128590":{"pageid":128590,"ns":0,"title":"Akira (film)"}
    
    called by
@@ -551,11 +589,11 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
     if(typeof infoA!="object")
       infoA = [infoA];
     vpr.vprint("wiki","mkPageLinks = = START = = "+infoA.length+" options:"+vpr.dumpvar(optionsO));
-  if(linksDiv.need2clear){
-    linksDiv.need2clear=false;
-    linksDiv.html('');
-    vpr.vprint("wiki","mkPageLinks X X CLEAR WAIT");
-    }
+    if(linksDiv.need2clear){
+      linksDiv.need2clear=false;
+      linksDiv.html('');
+      vpr.vprint("wiki","mkPageLinks X X CLEAR WAIT");
+      }
     divider="<br>";
     if(optionsO && optionsO.divider!=null)
       divider=optionsO.divider;
@@ -563,7 +601,7 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
     if(optionsO && optionsO.label!=null)
       linksDiv.append($("<h2>").text(optionsO.label)); //// < - - W R I T E   TO   D I V 
     //
-  	// LOOP  LOOP
+    // LOOP  LOOP
     //
     for(ii=0;ii<infoA.length;ii++){
       if(typeof infoA[ii]!="object")
@@ -571,29 +609,32 @@ https://en.wikiquote.org/w/api.php?format=json&action=query&generator=categoryme
       else
         zt=infoA[ii].title;
       extrastyle="";
+      //20190817 note this only shows for sub-cats
       if(optionsO && optionsO.fontsizekey!=null && infoA[ii].categoryinfo!=null){
+        vpr.vprint("wiki","mkPageLinks FONT HINTS  scalerange:"+optionsO.fontscalerange+" fontsizekey:"+optionsO.fontsizekey+" cat:"+infoA[ii].categoryinfo+" have it?"+infoA[ii].categoryinfo[optionsO.fontsizekey]);
         zsize = 10+infoA[ii].categoryinfo[optionsO.fontsizekey]*optionsO.fontscalerange;
-				if(size > 35)
-					size = 35;
+        if(zsize > 35)
+          zsize = 35;
         extrastyle=' style="font-size:'+zsize+'px;" ';
         }
+      
       vpr.vprint("wiki","mkPageLinks:"+zt+" type:"+typeof(infoA[ii])+" have pageid:"+infoA[ii].pageid);
       //these will be categories
       // wqa.listCategories(pageId,"Category:"+pageO.title,thumbsDiv, error);
       if(optionsO && optionsO.isCat) //// < - - W R I T E   TO   D I V 
-        linksDiv.append('<a title="'+zt+'" href="javascript:vpr.noop()" onClick="'+API_NAME+'.listCategories('+infoA[ii].pageid+',\''+(zt.replace(/ /g,"_").replace(/'/g,"\\'"))+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
+        linksDiv.append('<a title="'+zt+'" href="javascript:'+API_NAME+'.noop()" onClick="'+API_NAME+'.listCategories('+infoA[ii].pageid+',\''+(zt.replace(/ /g,"_").replace(/'/g,"\\'"))+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
       else if(infoA[ii].pageid!=null)
-        linksDiv.append('<a title="'+zt+'" href="javascript:vpr.noop()" onClick="'+API_NAME+'.getSectionsForPage(\''+String(infoA[ii].pageid).replace(/'/g,"\\'")+'\',\''+zt+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
+        linksDiv.append('<a title="'+zt+'" href="javascript:'+API_NAME+'.noop()" onClick="'+API_NAME+'.getSectionsForPage(\''+String(infoA[ii].pageid).replace(/'/g,"\\'")+'\',\''+zt+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
       else //wqa.queryTitles(newtext);
-        linksDiv.append('<a title="'+zt+'" href="javascript:vpr.noop()" onClick="'+API_NAME+'.queryTitles(\''+String(zt).replace(/'/g,"\\'")+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
+        linksDiv.append('<a title="'+zt+'" href="javascript:'+API_NAME+'.noop()" onClick="'+API_NAME+'.queryTitles(\''+String(zt).replace(/'/g,"\\'")+'\',{clear:true})" >'+zt.replace(/^Category:/,"").replace(/_/g," ")+'</a>'+divider);
       }
     } // end mkPageLinks
     
 /**
   moreLike - Search using moreLike api.  Returns an array of search results.
-	example call:
-		https://en.wikiquote.org/w/api.php?action=query&redirects=resolve&list=search&srsearch=morelike:Xun_Zi&srlimit=10&srprop=size&formatversion=2
-	response:
+  example call:
+    https://en.wikiquote.org/w/api.php?action=query&redirects=resolve&list=search&srsearch=morelike:Xun_Zi&srlimit=10&srprop=size&formatversion=2
+  response:
   {
     "batchcomplete": true,
     "continue": {
@@ -645,7 +686,6 @@ ref
             else {
               pagA.push(infoA);              
               }
-
             } //end for
         vpr.vprint("wiki","moreLike  * * DONE * * num cats:"+catA.length+" pages:"+pagA.length);
         if(catA.length>=1)
@@ -673,9 +713,9 @@ ref
 }}}
    */
   wqa.queryTitles = function(titles,optionsO) {
-  linksDiv=(optionsO && optionsO.linksDiv)?optionsO.linksDiv:wqa.linksDiv;
-  vpr.vprint("wiki","queryTitles = = START = = "+titles);
-  if(optionsO && optionsO.clear)
+    linksDiv=(optionsO && optionsO.linksDiv)?optionsO.linksDiv:wqa.linksDiv;
+    vpr.vprint("wiki","queryTitles = = START = = "+titles);
+    if(optionsO && optionsO.clear)
       wqa.clearDivs('wait',titles,optionsO);
     $.ajax({
       url: API_URL,
@@ -691,6 +731,7 @@ ref
         var pages = result.query.pages;
         var pageId = -1;
         vpr.vprint("wiki","queryTitles CALLBACK["+titles+"] got:"+vpr.dumpvar(result));
+        $('#'+API_NAME+'link').prop('href',search_template.replace(/CONTENT/,titles)); 
         for(var key in pages) {
           var page = pages[key];
           // api can return invalid recrods, these are marked as "missing"
@@ -714,15 +755,14 @@ ref
   }; // end queryTitles
 
 
-
   /**
    getSectionsForPage - Get the sections for a given page.
-   This makes parsing for quotes more manageable.
-   Returns an array of all "1.x" sections as these usually contain the quotes.
-   20170325 TVs and Movies often break this convention so always put a "more" link
-
-   input:
-   https://en.wikiquote.org/w/api.php?format=json&action=parse&prop=sections&pageid=2
+     This makes parsing for quotes more manageable.
+     Returns an array of all "1.x" sections as these usually contain the quotes.
+     20170325 TVs and Movies often break this convention so always put a "more" link
+  
+     input:
+     https://en.wikiquote.org/w/api.php?format=json&action=parse&prop=sections&pageid=2
    
    example einstein
 {"parse":{"title":"Albert Einstein","pageid":2,
@@ -735,23 +775,24 @@ ref
 if no sections
 {"parse":{"title":"Kill Bill","pageid":10445,"sections"
 :[]}}
-   */
+  */
   wqa.getSectionsForPage = function(pageId,titles,optionsO) {
-  if(optionsO && optionsO.clear) // do clear
-    wqa.clearDivs('wait',titles,optionsO);
-  vpr.vprint("wiki","getSectionsForPage  = =  START  = =  :pageId:"+pageId+" titles:"+titles);
-  var mydata={
+    if(optionsO && optionsO.clear) // do clear
+      wqa.clearDivs('wait',titles,optionsO);
+    vpr.vprint("wiki","getSectionsForPage  = =  START  = =  :pageId:"+pageId+" titles:"+titles);
+    $('#'+API_NAME+'link').prop('href',search_template.replace(/CONTENT/,titles));
+    var mydata={
         format: "json",
         action: "parse",
         prop: "sections",
         pageid: pageId
       };
-   if(pageId==null){// swap titles for pageids
-    vpr.vprint("wiki","getSectionsForPage = =  PAGE MODE:"+titles);
-    mydata['page']=titles;
-    delete mydata['pageid'];
-    }
-  $.ajax({
+    if(pageId==null){// swap titles for pageids
+      vpr.vprint("wiki","getSectionsForPage = =  PAGE MODE:"+titles);
+      mydata['page']=titles;
+      delete mydata['pageid'];
+      }
+    $.ajax({
       url: API_URL,
       dataType: "jsonp",
       data: mydata,
@@ -811,17 +852,160 @@ if no sections
       }
     });
   }; // end getSectionsForPage
+
+  
+  /**
+   getWikiForSection - Get Wikipedia page for specific section
+   Usually section 0 includes personal Wikipedia page link
+   ref:  https://www.mediawiki.org/wiki/API:Parsing_wikitext
+   */
+  wqa.getWikiForSection = function(title, pageId, sec, success, error) {
+    $.ajax({
+      url: API_URL,
+      dataType: "jsonp",
+      data: {
+        format: "json",
+        action: "parse",
+        prop:"text|categories|links|sections|displaytitle|properties",
+        disabletoc:true,
+        pageid: pageId,
+        section: sec
+      },
+
+      success: function(result, status){
+        var wikilink;
+        console.log('getWikiForSection CALLBACK what is iwlink:'+result.parse.iwlinks);
+        var iwl = result.parse.iwlinks;
+        for(var i=0; i<(iwl).length; i++){
+          var obj = iwl[i];
+          if((obj["*"]).indexOf(title) != -1){
+             wikilink = obj.url;
+            }
+          }
+        success(wikilink);
+      },
+      error: function(xhr, result, status){
+        error("getWikiForSection:Error getting quotes");
+      }
+    });
+  }; // end
+
+  /**
+   toggleNewlines - add/remove newlines (<br>)
+  */
+  wqa.toggleNewlines= function(ischecked){
+    //ischecked = $('#'+API_NAME+'newlines').prop('chekced');      
+    //alert("toggleNewlines checked?:"+ischecked);
+    wqa.thumbsDiv.find('li').each(function(){
+      cur=$(this).html();
+      if(ischecked)
+        $(this).html(cur.replace(/\n/g,"<br>\n") );
+      else
+        $(this).html(cur.replace(/<br>/g,"") );
+      });
+    }
+
+
+  /**
+   capitalizeString - Capitalize the first letter of each word
+  */
+  wqa.capitalizeString = function(input) {
+    var inputArray = input.split(' ');
+    var output = [];
+    for(s in inputArray) {
+      output.push(inputArray[s].charAt(0).toUpperCase() + inputArray[s].slice(1));
+      }         
+    stemp = output.join(' ');
+    stemp = stemp.replace(/\&#8217;/g,"'").replace(/[\u2018\u2019]/g,"'"); // fancy quot to singlequote
+    return stemp;
+    };
+  /**
+   catagorizeString - Capitalize the first letter of each word
+   20170321 cmm only do very first letter, test case: Pine cone  alternative is Pine cone|Pine Cone
+  */
+  wqa.catagorizeString = function(input) {
+    var inputArray = input.split(' ');
+    var output = [];
+    stemp = input.charAt(0).toUpperCase()+ input.slice(1);
+    for(s in inputArray) {
+      // 20170413 sometimes want uppercase, sometimes dont charAt(0).toUpperCase()
+      output.push(inputArray[s].charAt(0) + inputArray[s].slice(1));
+      }
+    return 'Category:'+output.join('_');
+  };
+  /**
+   clearDivs - clear out divs show wait icon and handle history stack
+   args - mode =[wait|regular] for wait, show spinner
+        - title, NeW title to be loaded
+  */
+  wqa.clearDivs= function(mode,title,optionsO){
+    vpr.vprint("wiki","X X X X X X X X X X X X clearDivs("+mode+") X X X X X X X X X X X X");
+    clearwith =(wqa.waiticon !=null && mode=="wait")?wqa.waiticon:'';
+    if(mode=="wait") {// store up * HISTORY *
+      if(wqa.linksDiv.html()!=''){
+        //alert("history push! from size:"+historyA.length);
+        historyA.push(wqa.linksDiv.html());
+        historytA.push(wqa.thumbsDiv.html());
+        if(optionsO && optionsO.setPrevSearch) { //TYPED input search: use presearch
+          historyiA.push(prevsearch );
+          prevsearch = wqa.inputEl.val();
+          }
+        else{ //                                  CLICK link search
+          historyiA.push(wqa.inputEl.val() );// save CURRENT title
+          // set NEW title ... strip any Category: or underscore
+          wqa.inputEl.val(title.replace(/^Category:/,"").replace(/_/g," "));
+          prevsearch =title.replace(/^Category:/,"").replace(/_/g," ");
+          }
+        $('#'+API_NAME+'goback').removeClass('gnlv-gone');
+        } // end links not empty
+      } // end wait mode
+    if(dontclearcats>0){ // this is used for category disambiguation, usually cant come in before
+      dontclearcats--;
+      vpr.vprint("wiki","X X  clearDivs.linksDiv had a dont clear flag!:"+dontclearcats);
+      }
+    else {
+      wqa.linksDiv.html(clearwith);  // < - -  - CLEAR
+        if(mode=="wait")
+          wqa.linksDiv.need2clear=true;
+      }
+    wqa.thumbsDiv.html(clearwith);   // < - -  - CLEAR
+    if(mode=="wait")
+      wqa.thumbsDiv.need2clear=true;
+    }// end clearDivs
+  /**
+   goBackl - pop history stacks and load to appropriate divs
+  */
+  wqa.goBackl= function(){
+    if(historyA.length==0)
+      return;
+    else if(historyA.length==1) // last pop
+      $('#'+API_NAME+'goback').addClass('gnlv-gone');      
+    //alert("goBackl going back from size:"+historyA.length);
+    wqa.linksDiv.html(historyA.pop());
+    wqa.thumbsDiv.html(historytA.pop());
+    // restore events 
+    wqa.thumbsDiv.find('li').on('click',vpr.wkUseQuote);
+    prevsearch=historyiA.pop();
+    wqa.inputEl.val(prevsearch);
+    }
+  /**
+  getLastSearch - get last item on history stack
+  */
+  wqa.getLastSearch= function(){
+    return prevsearch;
+    //return(historyA[historyA.length-1]) 
+    }
   /*
    quoteReady - strip html and display the quote
   */ 
    wqa.quoteReady=function(newQuoteO) {
-     var alltext='',numskip=0;
+    var alltext='',numskip=0;
     thumbsDiv=(newQuoteO && newQuoteO.thumbsDiv)?newQuoteO.thumbsDiv:wqa.thumbsDiv;
-  if(thumbsDiv.need2clear){
-    thumbsDiv.need2clear=false;
-    thumbsDiv.html('');
-    vpr.vprint("wiki","quoteReady X X CLEAR WAIT");
-    }
+    if(thumbsDiv.need2clear){
+      thumbsDiv.need2clear=false;
+      thumbsDiv.html('');
+      vpr.vprint("wiki","quoteReady X X CLEAR WAIT");
+      }
     if(newQuoteO!=null) {
       // put them in the div
       vpr.vprint("wiki","quoteReady: got a quote:"+vpr.dumpvar(newQuoteO));
@@ -832,7 +1016,6 @@ if no sections
           thumbsDiv.append('<input id="'+API_NAME+'attribute" type="checkbox" value="'+"- "+newQuoteO.titles+'" checked> attribute to: ');
         else 
           thumbsDiv.append('<input id="'+API_NAME+'attribute" type="checkbox" value="'+"- "+newQuoteO.titles+'" > attribute to: ');
-        
         thumbsDiv.append($("<span>").text("- "+newQuoteO.titles) );
         }
       //
@@ -933,12 +1116,12 @@ if no sections
         }
         // TV movies have lots of descriptions lists for dialogue
         /* <dl>
-						<dd><b>Simba</b>: Hey, Uncle Scar, when I'm king, what'll that make you?</dd>
-						<dd><b>Scar</b>: A monkey's uncle.</dd>
-						<dd><b>Simba</b>: <i>[laughs]</i> You're so weird!</dd>
-						<dd><b>Scar</b>: You have no idea.</dd>
-						</dl>
-						*/
+            <dd><b>Simba</b>: Hey, Uncle Scar, when I'm king, what'll that make you?</dd>
+            <dd><b>Scar</b>: A monkey's uncle.</dd>
+            <dd><b>Simba</b>: <i>[laughs]</i> You're so weird!</dd>
+            <dd><b>Scar</b>: You have no idea.</dd>
+            </dl>
+            */
         // Find top level <li> only
         var $tocfree = $('<div></div>').html(quotes);// use disabletoc .find('*[id!=toc]');
         var $lis = $tocfree.find('li:not(li li)'); // this gets rid of explainations /attributes: One of Bilbo's riddles for Gollum. The answer is "teeth".
@@ -953,7 +1136,7 @@ if no sections
         // ITALICS links are in italic  <i><a href="/wiki/Akira" class="mw-redirect" title="Akira">Akira</a></i>
         // A) hobbit riddles are italic < WANT it
         // B) Lion king quote embelishments are in italics  < DO NOT WANT
-        if  (secline=="See also" || ($lns.length >0 && $lns.length > $lis.length && !specialflags.match(/stdquote/))){ // dls   links                         LINKS
+        if  (secline=="See also" || ($lns.length >0 && $lns.length > $lis.length && !specialflags.match(/stdquote/))){ // dls   links              LINKS
           $lns.each(function() {
             //fullquote =$(this).prop('href'); this gets transformed to full path
             fullquote =$(this).text();
@@ -980,13 +1163,13 @@ if no sections
               fullquote="";
               $BnI.each(function() {
                 fullquote+=$(this).html()+" ";
-              });
+                });
               quoteArrayb.push(fullquote);
               }
             else {
               //20170318 CMM we only want what is considered famous !
               quoteArrayr.push($(this).html());
-            }
+              }
           });
         else { // dls   movie/dialog                         MOVIE/DIALOG
           // sometimes the dl is a combined block quote sometimes NOT
@@ -1012,7 +1195,7 @@ if no sections
           wqa.quoteReady({titles: result.parse.title, 
                           quotes: quoteArray,
                           specialflags: specialflags }); // < < - -   DISPLAY  QUOTES
-        }// end quotes
+          }// end quotes
         }// end had result
       },// end success
       error: function(xhr, result, status){
@@ -1021,148 +1204,5 @@ if no sections
     });// end ajax
     }// end loop sections
   };// end getQuotesForSection
-  
-  /**
-   getWikiForSection - Get Wikipedia page for specific section
-   Usually section 0 includes personal Wikipedia page link
-   ref:  https://www.mediawiki.org/wiki/API:Parsing_wikitext
-   */
-  wqa.getWikiForSection = function(title, pageId, sec, success, error) {
-    $.ajax({
-      url: API_URL,
-      dataType: "jsonp",
-      data: {
-        format: "json",
-        action: "parse",
-        prop:"text|categories|links|sections|displaytitle|properties",
-        disabletoc:true,
-        pageid: pageId,
-        section: sec
-      },
-
-      success: function(result, status){
-    
-        var wikilink;
-    console.log('getWikiForSection CALLBACK what is iwlink:'+result.parse.iwlinks);
-    var iwl = result.parse.iwlinks;
-    for(var i=0; i<(iwl).length; i++){
-      var obj = iwl[i];
-      if((obj["*"]).indexOf(title) != -1){
-         wikilink = obj.url;
-      }
-    }
-        success(wikilink);
-      },
-      error: function(xhr, result, status){
-        error("getWikiForSection:Error getting quotes");
-      }
-    });
-  }; // end
-
-  /**
-   toggleNewlines - add/remove newlines (<br>)
-   */
-  wqa.toggleNewlines= function(ischecked){
-    //ischecked = $('#'+API_NAME+'newlines').prop('chekced');      
-    //alert("toggleNewlines checked?:"+ischecked);
-    wqa.thumbsDiv.find('li').each(function(){
-      cur=$(this).html();
-      if(ischecked)
-        $(this).html(cur.replace(/\n/g,"<br>\n") );
-      else
-        $(this).html(cur.replace(/<br>/g,"") );
-    });
-    }
-
-
-  /**
-   capitalizeString - Capitalize the first letter of each word
-   */
-  wqa.capitalizeString = function(input) {
-    var inputArray = input.split(' ');
-    var output = [];
-    for(s in inputArray) {
-      output.push(inputArray[s].charAt(0).toUpperCase() + inputArray[s].slice(1));
-    }         
-  stemp = output.join(' ');
-	stemp = stemp.replace(/\&#8217;/g,"'").replace(/[\u2018\u2019]/g,"'"); // fancy quot to singlequote
-
-    return stemp;
-  };
-  /**
-   catagorizeString - Capitalize the first letter of each word
-   20170321 cmm only do very first letter, test case: Pine cone  alternative is Pine cone|Pine Cone
-   */
-  wqa.catagorizeString = function(input) {
-    var inputArray = input.split(' ');
-    var output = [];
-    stemp = input.charAt(0).toUpperCase()+ input.slice(1);
-  
-    for(s in inputArray) {
-      // 20170413 sometimes want uppercase, sometimes dont charAt(0).toUpperCase()
-    output.push(inputArray[s].charAt(0) + inputArray[s].slice(1));
-    }
-    return 'Category:'+output.join('_');
-  };
-  /**
-   clearDivs - clear out divs show wait icon and handle history stack
-   args - mode =[wait|regular] for wait, show spinner
-        - title, NeW title to be loaded
-   */
-  wqa.clearDivs= function(mode,title,optionsO){
-    vpr.vprint("wiki","X X X X X X X X X X X X clearDivs("+mode+") X X X X X X X X X X X X");
-    clearwith =(wqa.waiticon !=null && mode=="wait")?wqa.waiticon:'';
-    if(mode=="wait") {// store up * HISTORY *
-      if(wqa.linksDiv.html()!=''){
-        //alert("history push! from size:"+historyA.length);
-        historyA.push(wqa.linksDiv.html());
-        historytA.push(wqa.thumbsDiv.html());
-        if(optionsO && optionsO.setPrevSearch) { //TYPED input search: use presearch
-          historyiA.push(prevsearch );
-          prevsearch = wqa.inputEl.val();
-          }
-    else{ //                                  CLICK link search
-          historyiA.push(wqa.inputEl.val() );// save CURRENT title
-      // set NEW title ... strip any Category: or underscore
-      wqa.inputEl.val(title.replace(/^Category:/,"").replace(/_/g," "));
-      prevsearch =title.replace(/^Category:/,"").replace(/_/g," ");
-      }
-        $('#'+API_NAME+'goback').removeClass('gnlv-gone');
-        } // end links not empty
-      } // end wait mode
-  if(dontclearcats>0){ // this is used for category disambiguation, usually cant come in before
-    dontclearcats--;
-    vpr.vprint("wiki","X X  clearDivs.linksDiv had a dont clear flag!:"+dontclearcats);
-    }
-  else {
-      wqa.linksDiv.html(clearwith);  // < - -  - CLEAR
-        if(mode=="wait")
-          wqa.linksDiv.need2clear=true;
-        }
-      wqa.thumbsDiv.html(clearwith);     // < - -  - CLEAR
-      if(mode=="wait")
-        wqa.thumbsDiv.need2clear=true;
-    }// end clearDivs
-  /**
-   goBackl - pop history stacks and load to appropriate divs
-   */
-  wqa.goBackl= function(){
-    if(historyA.length==0)
-      return;
-    else if(historyA.length==1) // last pop
-      $('#'+API_NAME+'goback').addClass('gnlv-gone');      
-    //alert("goBackl going back from size:"+historyA.length);
-    wqa.linksDiv.html(historyA.pop());
-    wqa.thumbsDiv.html(historytA.pop());
-    prevsearch=historyiA.pop();
-    wqa.inputEl.val(prevsearch);
-    }
-  /**
-  getLastSearch - get last item on history stack
-   */
-  wqa.getLastSearch= function(){
-    return prevsearch;
-    //return(historyA[historyA.length-1]) 
-    }
   //return wqa;
 };
